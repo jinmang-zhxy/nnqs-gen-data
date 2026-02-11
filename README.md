@@ -61,6 +61,7 @@ cd NeuralNetworkQuantumState/test
 # This will output into file `out.lih-test`
 # Your can modify the submit.sh acoording your compute platform
 ./submit.sh <hamiltonian_path> <config_file_name> <out_file_name_suffix>
+bash submit.sh ../molecules/thomas/h2o/qubit_op.data configs/config-h2o.yaml h2o-test
 ```
 
 ### Parallel Version (Torchrun)

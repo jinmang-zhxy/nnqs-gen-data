@@ -6,15 +6,13 @@ local_energy_version: "CPP_CPU"
 # local_energy_version: "CPP_GPU"
 #local_energy_version: "JL_CPU"
 
-#n_samples: 1000000000000
 n_samples: 12288000
 n_epoches: 30000
 save_model: 0
 save_per_epoches: 1000
 load_model: 0
-checkpoint_path: "/ssd/home/ustc1/yyb/NeuralNetworkQuantumState_copy_copy/test_feng/checkpoints/out.small_set-3-tqs-test-para-iter15000.pt"
 #checkpoint_path: "/ssd/home/ustc1/kbw/SC/NeuralNetworkQuantumState-mcnn-dev/test_pretrain_allqubit/all_93/small_set-100000th.pt"
-#checkpoint_path: "/ssd/home/ustc1/kbw/SC/NeuralNetworkQuantumState-mcnn-dev/test_pretrain_allqubit/random_93/small_set-100000th.pt"
+checkpoint_path: "/ssd/home/ustc1/kbw/SC/NeuralNetworkQuantumState-mcnn-dev/test_pretrain_allqubit/random_93/small_set-100000th.pt"
 
 # 0->extract ham; 1->load ham; 2->save ham;
 do_ham: 0
@@ -49,8 +47,8 @@ max_transfer: 0
 use_samples_recursive: true
 n_samples_min: 1e10
 n_samples_max: 1e15
-n_unq_samples_min: 50000
-n_unq_samples_max: 100000
+n_unq_samples_min: 8000
+n_unq_samples_max: 50000
 n_samples_scale_factor: 1.2
 
 sampling_algo: "bfs"
@@ -74,17 +72,15 @@ qubit_order: -1
 #qubit_order: 0
 log_level: 'INFO'
 #log_level: 'DEBUG'
-system: 'Li2O'
-n_elecs: 14
+system: 'CH4'
+n_elecs: 10
 # default will be n_elecs/2
-# n_alpha_electrons: 5 # spin-up elec
-# n_beta_electrons: 5 # spin-down elec
+n_alpha_electrons: 5
+n_beta_electrons: 5
 elec_cons_method: 0
 
-phase_hidden_size: [512,512,512,512]
-
 wf_opt_step: 30000
-reference_E: -87.8926932462798050
+reference_E: -39.8062592491501448 
 reference_E_logo: "FCI"
 
 model:

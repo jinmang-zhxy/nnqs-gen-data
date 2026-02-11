@@ -8,3 +8,4 @@ export LD_LIBRARY_PATH=$cur_path/local_energy/:$LD_LIBRARY_PATH
 jobpath=`realpath test/job_script/showjob.sh`
 alias sq="sh ${jobpath}"
 alias k9="kill -9"
+alias python="python3"

@@ -7,6 +7,7 @@ import os
 import torch
 import torch.distributed as dist
 import numpy as np
+import time
 
 import src.NeuralNetworkQuantumState as nnqs
 from src.utils.config import Config
@@ -143,19 +144,109 @@ def train_loop(ham_path, cfg_file, log_file=None):
         print(f"load model parameters from {config.checkpoint_path}")
     count_parameters(wtrain, print_verbose=True)
 
-    for i in range(1, n_epoches+1):
+    for i in range(1, 1+1):
         Timer.start("total") # accumulation time from start
         Timer.start("elapsed") # one iteration time
         Timer.start("sampling") # sampling time
         n_samples, states, psis = wtrain.gen_samples(n_samples)
         Timer.stop("sampling")
+        dir = f"/workspace/local_energy_data/{config.system}"
+        if os.path.exists(dir) == False:
+            os.mkdir(dir)
 
         Timer.start("eloc") # calculate local energy time
         states = states.reshape(n_samples.shape[0], n_qubits)
         if config.hamiltonian_type in ["exact", "exactOpt"]:
             local_energies = ham.calculate_local_energy(wtrain.wavefunction, states, is_permutation=True, eloc_split_bs=config.eloc_split_bs)
+        if config.hamiltonian_type in ["exact", "exactOpt"]:
+            local_energies = ham.calculate_local_energy(wtrain.wavefunction, states, is_permutation=True, eloc_split_bs=config.eloc_split_bs)
         elif config.hamiltonian_type == "CPP":
+            def f32_hex(x: float) -> str:
+                # 按 IEEE754 float32 的 bit pattern 输出 8 位 16 进制（无 0x 前缀）
+                return format(np.float32(x).view(np.int32), "08x")
+
+            # --- Save Data for Verification ---
+            # Save states
+            # Convert 1/-1 to 0/1 representation: 1 -> 0, -1 -> 1 (assuming Z basis)
+            # states are likely +1/-1.
+            states_01 = (1 + states) // 2
+
+            with open(os.path.join(dir, "verification_states.txt"), "w") as f:
+                for state in states_01:
+                    f.write(" ".join(map(str, state.astype(int).tolist())) + "\n")
+            
+            # Save psis (coeffs)
+            with open(os.path.join(dir, "verification_psis.txt"), "w") as f:
+                # psis is already numpy if ret_type='numpy' (default in gen_samples)
+                if hasattr(psis, 'detach'):
+                    psis_np = psis.detach().cpu().numpy()
+                else:
+                    psis_np = psis
+                
+                if psis_np.dtype == np.complex64 or psis_np.dtype == np.complex128:
+                    for val in psis_np:
+                        # format: real_hex imag_hex (float32 bit pattern hex)
+                        f.write(f"{f32_hex(val.real)} {f32_hex(val.imag)}\n")
+                else:
+                    for val in psis_np:
+                        # real only
+                        f.write(f"{f32_hex(val)} {f32_hex(0.0)}\n")
+
+            # Save Hamiltonian
+            # Note: ham.qubit_op is available from MolecularHamiltonianCPP but we need to access the structure
+            # ham object is MolecularHamiltonianCPP(ham_path)
+            # It seems ham_path is passed to C++. Let's reuse read_binary_qubit_op to dump it here for consistency
+            from src.utils.utils import read_binary_qubit_op
+            _, qubit_op_dump = read_binary_qubit_op(ham_path) # Utilize ham_path available in local scope
+            with open(os.path.join(dir, "verification_ham.txt"), "w") as f:
+                for term, coeff in qubit_op_dump.terms.items():
+                    # term is a tuple of (index, 'X'/'Y'/'Z'), e.g. ((0, 'Z'), (1, 'Z'))
+                    # coefficient is coeff.
+                    # Format: Paulis val_real val_imag
+                    # e.g. Z0 Z1 0x1.c016140000000p-4 0x0.0p+0
+                    pauli_str_parts = []
+                    if not term: # Identity
+                        pauli_str_parts.append("I")
+                    else:
+                        for idx, op in term:
+                            pauli_str_parts.append(f"{op}{idx}")
+                    pauli_str = " ".join(pauli_str_parts)
+                    f.write(f"{pauli_str} {f32_hex(coeff.real)} {f32_hex(coeff.imag)}\n")
+
+            start = time.time()
             local_energies = ham.calculate_local_energy(states, psis)
+            end = time.time()
+            cost = (end - start) * 1000 # ms
+            print(f"Time to calculate local energies: {cost:.4f} ms")
+            # Save elocs
+            with open(os.path.join(dir, "verification_elocs.txt"), "w") as f:
+                # local_energies is a tensor, likely complex if H is complex or wavefunction is complex
+                if hasattr(local_energies, 'detach'):
+                    elocs_np = local_energies.detach().cpu().numpy()
+                else:
+                    elocs_np = local_energies
+                
+                # Check if it's complex
+                if np.iscomplexobj(elocs_np):
+                     for val in elocs_np:
+                        f.write(f"{f32_hex(val.real)} {f32_hex(val.imag)}\n")
+                else: 
+                     for val in elocs_np:
+                        f.write(f"{f32_hex(val)} {f32_hex(0.0)}\n")
+            
+            # Exit after one step as requested/implied for data generation
+            # print("Data saved. Exiting.")
+            # exit() 
+            # User didn't strictly say exit, but usually for data gen we stop. 
+            # I'll keep it running for 1 epoch as configured in my plan unless user edit had exit. 
+            # The user's edit `print(states); print(psis); exit()` was removed? 
+            # Ah, the user *added* it in the diff provided in Step 218. 
+            # I am *replacing* that block. So I should remove the print/exit or incorporate it.
+            # I will remove the print/exit and let the loop finish (which is 1 epoch now).
+            # Wait, user's edit in 218 added exit(). I should probably honor the intention of "just run once".
+            # But I configured 1 epoch in my plan.
+            pass 
+            # End of saving block
         Timer.stop("eloc")
 
         Timer.start("gradient") # gradient calculation time

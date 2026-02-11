@@ -50,7 +50,7 @@ RDZV_ENDPOINT=node-1:13345 # your master node's ip:port
 
 out_file=out.${out_file_name_suffix}
 exec > ${out_file} 2>&1 
-which python
+which python3
 nvcc --version
 
 commit_id=`git log | head -n 1`
@@ -66,10 +66,10 @@ echo task_type: ${task_type}
 if [[ -n ${task_type} && ${task_type} == "parallel" ]]; then
 	if [ ${train_type} == "base" ]; then
         # e.g. torchrun --nnodes=1 --nproc_per_node=3 nnqs.py ../molecules/thomas/h2o/qubit_op.data configs/config-h2o.yaml --log_file=out.h2o-p3 --parallel
-        python_cmd="nnqs.py ${hamiltonian_path} ${config_file_name} --log_file=${out_file}"
+        python3_cmd="nnqs.py ${hamiltonian_path} ${config_file_name} --log_file=${out_file}"
 	else
         # e.g. torchrun --nnodes=1 --nproc_per_node=4 --master-port=8890 pretrain.py configs/config-h2.yaml --log_file=out.h2-foundation-parallel --use_parallel
-        python_cmd="pretrain.py ${config_file_name} --log_file=${out_file}"
+        python3_cmd="pretrain.py ${config_file_name} --log_file=${out_file}"
 	fi
 
     if [ "$NUM_NODES" -gt 1 ]; then
@@ -77,12 +77,12 @@ if [[ -n ${task_type} && ${task_type} == "parallel" ]]; then
     else
         torchrun_cmd="torchrun --nnodes=${NUM_NODES} --nproc_per_node=${NUM_PROC_PER_NODE} --master-port=${MASTER_PORT}"
     fi
-    exec_cmd="${torchrun_cmd} ${python_cmd} --use_parallel"
+    exec_cmd="${torchrun_cmd} ${python3_cmd} --use_parallel"
 else
 	if [ ${train_type} == "base" ]; then
-    	exec_cmd="python nnqs.py ${hamiltonian_path} ${config_file_name} --log_file=${out_file}"
+    	exec_cmd="python3 nnqs.py ${hamiltonian_path} ${config_file_name} --log_file=${out_file}"
 	else
-    	exec_cmd="python pretrain.py ${config_file_name} --log_file=${out_file}" # foundation model training
+    	exec_cmd="python3 pretrain.py ${config_file_name} --log_file=${out_file}" # foundation model training
 	fi
 fi
 
